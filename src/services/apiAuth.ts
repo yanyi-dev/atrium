@@ -1,6 +1,23 @@
 import supabase, { supabaseUrl } from "./supabase";
 
-export async function signup({ fullName, email, password }) {
+interface SignUpParams {
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+interface LoginParams {
+  email: string;
+  password: string;
+}
+
+interface UpdateCurrentUserParams {
+  password?: string;
+  fullName?: string;
+  avatar?: File;
+}
+
+export async function signup({ fullName, email, password }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -17,8 +34,8 @@ export async function signup({ fullName, email, password }) {
   return data;
 }
 
-export async function login({ email, password }) {
-  let { data, error } = await supabase.auth.signInWithPassword({
+export async function login({ email, password }: LoginParams) {
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -47,7 +64,11 @@ export async function logout() {
   if (error) throw new Error(error.message);
 }
 
-export async function updateCurrentUser({ password, fullName, avatar }) {
+export async function updateCurrentUser({
+  password,
+  fullName,
+  avatar,
+}: UpdateCurrentUserParams) {
   // 密码和用户名分开更新
   let updateData;
   if (password) updateData = { password };
@@ -64,7 +85,7 @@ export async function updateCurrentUser({ password, fullName, avatar }) {
   const { error: storageError } = await supabase.storage
     .from("avatars")
     .upload(fileName, avatar);
-  if (storageError) throw new Error(error.message);
+  if (storageError) throw new Error(storageError.message);
 
   const { data: updatedUser, error: updateError } =
     await supabase.auth.updateUser({
@@ -72,7 +93,7 @@ export async function updateCurrentUser({ password, fullName, avatar }) {
         avatar: `${supabaseUrl}/storage/v1/object/public/avatars/${fileName}`,
       },
     });
-  if (updateError) throw new Error(error.message);
+  if (updateError) throw new Error(updateError.message);
 
   return updatedUser;
 }

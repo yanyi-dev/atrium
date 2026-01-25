@@ -1,13 +1,59 @@
 import { PAGE_SIZE } from "../utils/constants";
 import { getToday } from "../utils/helpers";
 import supabase from "./supabase";
+import { Booking, UpdateBooking, Cabin, Guest } from "../types";
 
-export async function getBookings({ filter, sortBy, page }) {
-  let query = supabase
+interface GetBookingsParams {
+  filter: { field: string; value: string; method?: string };
+  sortBy: { field: string; direction: string };
+  page: number;
+}
+
+type BookingWithSelection = Pick<
+  Booking,
+  | "id"
+  | "created_at"
+  | "startDate"
+  | "endDate"
+  | "numNights"
+  | "numGuests"
+  | "status"
+  | "totalPrice"
+> & {
+  cabins: Pick<Cabin, "name"> | null; // 关联查询可能会返回 null
+  guests: Pick<Guest, "fullName" | "email"> | null;
+};
+
+type BookingDetail = Booking & {
+  cabins: Cabin | null;
+  guests: Guest | null;
+};
+
+type BookingsAfterDate = Pick<
+  Booking,
+  "created_at" | "totalPrice" | "extrasPrice"
+>;
+
+type StaysAfterDate = Booking & { guests: Pick<Guest, "fullName"> | null };
+
+type StaysTodayActivity = Booking & {
+  guests: Pick<Guest, "fullName" | "nationality" | "countryFlag"> | null;
+};
+
+export async function getBookings({
+  filter,
+  sortBy,
+  page,
+}: GetBookingsParams): Promise<{
+  data: BookingWithSelection[];
+  count: number | null;
+}> {
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = supabase
     .from("bookings")
     .select(
       "id, created_at, startDate, endDate, numNights, numGuests, status, totalPrice, cabins(name), guests(fullName, email)",
-      { count: "exact" }
+      { count: "exact" },
     );
 
   //筛选
@@ -36,7 +82,7 @@ export async function getBookings({ filter, sortBy, page }) {
   return { data, count };
 }
 
-export async function getBooking(id) {
+export async function getBooking(id: number): Promise<BookingDetail> {
   const { data, error } = await supabase
     .from("bookings")
     .select("*, cabins(*), guests(*)")
@@ -52,7 +98,9 @@ export async function getBooking(id) {
 }
 
 // Returns all BOOKINGS that are were created after the given date. Useful to get bookings created in the last 30 days, for example.
-export async function getBookingsAfterDate(date) {
+export async function getBookingsAfterDate(
+  date: string,
+): Promise<BookingsAfterDate[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select("created_at, totalPrice, extrasPrice")
@@ -68,7 +116,9 @@ export async function getBookingsAfterDate(date) {
 }
 
 // Returns all STAYS that are were created after the given date
-export async function getStaysAfterDate(date) {
+export async function getStaysAfterDate(
+  date: string,
+): Promise<StaysAfterDate[]> {
   const { data, error } = await supabase
     .from("bookings")
     // .select('*')
@@ -85,12 +135,12 @@ export async function getStaysAfterDate(date) {
 }
 
 // Activity means that there is a check in or a check out today
-export async function getStaysTodayActivity() {
+export async function getStaysTodayActivity(): Promise<StaysTodayActivity[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select("*, guests(fullName, nationality, countryFlag)")
     .or(
-      `and(status.eq.unconfirmed,startDate.eq.${getToday()}),and(status.eq.checked-in,endDate.eq.${getToday()})`
+      `and(status.eq.unconfirmed,startDate.eq.${getToday()}),and(status.eq.checked-in,endDate.eq.${getToday()})`,
     )
     .order("created_at");
 
@@ -106,7 +156,10 @@ export async function getStaysTodayActivity() {
   return data;
 }
 
-export async function updateBooking(id, obj) {
+export async function updateBooking(
+  id: number,
+  obj: UpdateBooking,
+): Promise<Booking> {
   const { data, error } = await supabase
     .from("bookings")
     .update(obj)
@@ -121,7 +174,7 @@ export async function updateBooking(id, obj) {
   return data;
 }
 
-export async function deleteBooking(id) {
+export async function deleteBooking(id: number): Promise<null> {
   // REMEMBER RLS POLICIES
   const { data, error } = await supabase.from("bookings").delete().eq("id", id);
 
