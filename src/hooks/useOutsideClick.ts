@@ -1,17 +1,20 @@
 import { useEffect, useRef } from "react";
 
-export function useOutsideClick(handler, listenCapturing = true) {
-  const ref = useRef(null);
+export function useOutsideClick<T extends HTMLElement>(
+  handler: () => void,
+  listenCapturing: boolean = true,
+) {
+  const ref = useRef<T>(null);
 
   useEffect(
     function () {
-      function handleClick(e) {
+      function handleClick(e: MouseEvent) {
         //方法二
         //如果点击发生在菜单外，且点击的不是任何按钮，才执行关闭操作
         if (
           ref.current &&
-          !ref.current.contains(e.target) &&
-          !e.target.closest("button")
+          !ref.current.contains(e.target as Node) &&
+          !(e.target as HTMLElement).closest("button")
         ) {
           handler();
         }
@@ -22,7 +25,7 @@ export function useOutsideClick(handler, listenCapturing = true) {
       return () =>
         document.removeEventListener("click", handleClick, listenCapturing);
     },
-    [handler, listenCapturing]
+    [handler, listenCapturing],
   );
 
   return ref;

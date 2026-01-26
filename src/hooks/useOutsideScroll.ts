@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 
-export function useOutsideScroll(enbale = true, handler) {
+export function useOutsideScroll(handler: () => void, enable: boolean = true) {
   useEffect(
     function () {
-      if (!enbale) return;
+      if (!enable) return;
 
       function handleScroll() {
         handler();
@@ -14,6 +14,6 @@ export function useOutsideScroll(enbale = true, handler) {
 
       return () => window.removeEventListener("scroll", handleScroll, true);
     },
-    [enbale, handler]
+    [handler, enable],
   );
 }

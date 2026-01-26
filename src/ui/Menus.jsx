@@ -112,7 +112,7 @@ function List({ id, children }) {
   const { openId, position, close } = useContext(MenusContext);
 
   //在当前窗口打开的情况下滚动，才关闭
-  useOutsideScroll(openId === id, close);
+  useOutsideScroll(close, openId === id);
   const ref = useOutsideClick(close);
   // const ref = useOutsideClick(close,false);
 
@@ -122,7 +122,7 @@ function List({ id, children }) {
     <StyledList $position={position} ref={ref}>
       {children}
     </StyledList>,
-    document.body
+    document.body,
   );
 }
 

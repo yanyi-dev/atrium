@@ -1,18 +1,29 @@
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, ReactNode } from "react";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
 
-//全局上下文文件，先创建上下文
-const DarkModeContext = createContext();
+interface DarkModeContextType {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
 
-function DarkModeProvider({ children }) {
+interface DarkModeProviderProps {
+  children: ReactNode;
+}
+
+//全局上下文文件，先创建上下文
+const DarkModeContext = createContext<DarkModeContextType | undefined>(
+  undefined,
+);
+
+function DarkModeProvider({ children }: DarkModeProviderProps) {
   // const [isDarkMode, setIsDarkMode] = useLocalStorageState(false, "isDarkMode");
   // 获取用户操作系统的当前主题偏好
   const isSystemDark = window?.matchMedia?.(
-    "(prefers-color-scheme: dark)"
+    "(prefers-color-scheme: dark)",
   )?.matches;
-  const [isDarkMode, setIsDarkMode] = useLocalStorageState(
+  const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>(
     isSystemDark,
-    "isDarkMode"
+    "isDarkMode",
   );
 
   useEffect(
@@ -25,7 +36,7 @@ function DarkModeProvider({ children }) {
         document.documentElement.classList.remove("dark-mode");
       }
     },
-    [isDarkMode]
+    [isDarkMode],
   );
 
   function toggleDarkMode() {
