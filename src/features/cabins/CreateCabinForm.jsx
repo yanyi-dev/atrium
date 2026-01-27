@@ -53,7 +53,7 @@ function CreateCabinForm({ cabinToEdit = {}, onCloseModal }) {
           onError: (err) => {
             toast.error(err.message);
           },
-        }
+        },
       );
     else
       createCabin(
@@ -66,7 +66,7 @@ function CreateCabinForm({ cabinToEdit = {}, onCloseModal }) {
           onError: (err) => {
             toast.error(err.message);
           },
-        }
+        },
       );
   }
 
@@ -78,7 +78,7 @@ function CreateCabinForm({ cabinToEdit = {}, onCloseModal }) {
     //handleSubmit中校验通过，它就会把表单里所有字段的值打包成一个对象，并作为第一个参数传递给onSubmit
     <Form
       onSubmit={handleSubmit(onSubmit, onError)}
-      type={onCloseModal ? "modal" : "regular"}
+      $type={onCloseModal ? "modal" : "regular"}
     >
       <FormRow label="Cabin name" error={errors?.name?.message}>
         <Input

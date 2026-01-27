@@ -24,10 +24,14 @@ const Buttons = styled.div`
   gap: 0.6rem;
 `;
 
-const PaginationButton = styled.button`
+interface PaginationButtonProps {
+  $active?: boolean;
+}
+
+const PaginationButton = styled.button<PaginationButtonProps>`
   background-color: ${(props) =>
-    props.active ? " var(--color-brand-600)" : "var(--color-grey-50)"};
-  color: ${(props) => (props.active ? " var(--color-brand-50)" : "inherit")};
+    props.$active ? " var(--color-brand-600)" : "var(--color-grey-50)"};
+  color: ${(props) => (props.$active ? " var(--color-brand-50)" : "inherit")};
   border: none;
   border-radius: var(--border-radius-sm);
   font-weight: 500;
@@ -59,7 +63,11 @@ const PaginationButton = styled.button`
   }
 `;
 
-function Pagination({ count }) {
+interface PaginationProps {
+  count: number;
+}
+
+function Pagination({ count }: PaginationProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   //当前页数
   const currentPage = !searchParams.get("page")
@@ -71,13 +79,13 @@ function Pagination({ count }) {
   function nextPage() {
     const next = currentPage === pageCount ? pageCount : currentPage + 1;
 
-    searchParams.set("page", next);
+    searchParams.set("page", String(next));
     setSearchParams(searchParams);
   }
   function prevPage() {
     const prev = currentPage === 1 ? 1 : currentPage - 1;
 
-    searchParams.set("page", prev);
+    searchParams.set("page", String(prev));
     setSearchParams(searchParams);
   }
 
@@ -90,7 +98,7 @@ function Pagination({ count }) {
         <span>
           {currentPage === pageCount ? count : currentPage * PAGE_SIZE}
         </span>{" "}
-        of <span>{count}</span> retults
+        of <span>{count}</span> results
       </P>
 
       <Buttons>

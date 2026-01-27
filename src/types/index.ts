@@ -19,3 +19,8 @@ export type UpdateGuest = Tables["guests"]["Update"];
 //Setting
 export type Setting = Tables["settings"]["Row"];
 export type UpdateSetting = Tables["settings"]["Update"];
+
+export interface Options {
+  value: string;
+  label: string;
+}

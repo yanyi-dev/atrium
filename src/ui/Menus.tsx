@@ -1,4 +1,12 @@
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  MouseEvent,
+  Dispatch,
+  SetStateAction,
+} from "react";
 import { createPortal } from "react-dom";
 import { HiEllipsisVertical } from "react-icons/hi2";
 import styled from "styled-components";
@@ -30,7 +38,16 @@ const StyledToggle = styled.button`
   }
 `;
 
-const StyledList = styled.ul`
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Position {
+  $position: Point;
+}
+
+const StyledList = styled.ul<Position>`
   position: fixed;
 
   background-color: var(--color-grey-0);
@@ -66,11 +83,32 @@ const StyledButton = styled.button`
   }
 `;
 
-const MenusContext = createContext();
+interface MenusContextProps {
+  openId: string;
+  open: Dispatch<SetStateAction<string>>;
+  close: () => void;
+  position: Point | null;
+  setPosition: Dispatch<SetStateAction<Point | null>>;
+}
 
-function Menus({ children }) {
+const MenusContext = createContext<MenusContextProps | undefined>(undefined);
+
+function useMenusContext() {
+  const context = useContext(MenusContext);
+
+  if (!context)
+    throw new Error("useMenus must be used within a Menus provider");
+
+  return context;
+}
+
+interface Menus {
+  children: ReactNode;
+}
+
+function Menus({ children }: Menus) {
   const [openId, setOpenId] = useState("");
-  const [position, setPosition] = useState(null);
+  const [position, setPosition] = useState<Point | null>(null);
 
   const close = () => setOpenId("");
   const open = setOpenId;
@@ -84,21 +122,29 @@ function Menus({ children }) {
   );
 }
 
-function Toggle({ id }) {
-  const { openId, open, close, setPosition } = useContext(MenusContext);
+interface ToggleProps {
+  id: string;
+}
 
-  function handleToggle(e) {
+function Toggle({ id }: ToggleProps) {
+  const { openId, open, close, setPosition } = useMenusContext();
+
+  function handleToggle(e: MouseEvent) {
     // e.stopPropagation()
     //配合下面List中的事件冒泡阶段的useOutsideClick保证菜单按钮的正常开关
     //方法二见useOutsideClick内部实现
 
-    const rect = e.target.closest("button").getBoundingClientRect();
+    const rect = (e.target as HTMLElement)
+      .closest("button")!
+      .getBoundingClientRect();
     setPosition({
       x: window.innerWidth - rect.width - rect.x,
       y: rect.y + rect.height + 8,
     });
     //当前没有打开菜单按钮，或打开的菜单按钮不是当前菜单按钮
-    openId === "" || openId !== id ? open(id) : close();
+    // openId === "" || openId !== id ? open(id) : close();
+    if (openId === "" || openId !== id) open(id);
+    else close();
   }
 
   return (
@@ -108,15 +154,20 @@ function Toggle({ id }) {
   );
 }
 
-function List({ id, children }) {
-  const { openId, position, close } = useContext(MenusContext);
+interface ListProps {
+  id: string;
+  children: ReactNode;
+}
+
+function List({ id, children }: ListProps) {
+  const { openId, position, close } = useMenusContext();
 
   //在当前窗口打开的情况下滚动，才关闭
   useOutsideScroll(close, openId === id);
-  const ref = useOutsideClick(close);
+  const ref = useOutsideClick<HTMLUListElement>(close);
   // const ref = useOutsideClick(close,false);
 
-  if (openId !== id) return null;
+  if (openId !== id || !position) return null;
 
   return createPortal(
     <StyledList $position={position} ref={ref}>
@@ -126,8 +177,14 @@ function List({ id, children }) {
   );
 }
 
-function Button({ children, icon, onClick }) {
-  const { close } = useContext(MenusContext);
+interface ButtonProps {
+  children: ReactNode;
+  icon?: ReactNode;
+  onClick?: () => void;
+}
+
+function Button({ children, icon, onClick }: ButtonProps) {
+  const { close } = useMenusContext();
   function handleClick() {
     onClick?.();
     close();

@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { useUser } from "../features/authentication/useUser";
 import Spinner from "./Spinner";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, ReactNode } from "react";
 
 const FullPage = styled.div`
   height: 100vh;
@@ -12,7 +12,11 @@ const FullPage = styled.div`
   justify-content: center;
 `;
 
-function ProtectedRoute({ children }) {
+interface ProtectedRoute {
+  children: ReactNode;
+}
+
+function ProtectedRoute({ children }: ProtectedRoute) {
   const navigate = useNavigate();
 
   //加载经过验证的用户,没有验证通过直接就重定向到登陆页面
@@ -23,7 +27,7 @@ function ProtectedRoute({ children }) {
     function () {
       if (!isAuthenticated && !isLoading) navigate("/login");
     },
-    [isAuthenticated, isLoading, navigate]
+    [isAuthenticated, isLoading, navigate],
   );
 
   if (isLoading)

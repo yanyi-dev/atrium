@@ -24,7 +24,12 @@ import styled, { css } from "styled-components";
 //props即组件接收的属性对象
 //as是styled-components提供的特殊props，可动态改变渲染的html标签
 //css函数可以创建一个可嵌套的样式对象
-const Heading = styled.h1`
+
+interface HeadingProps {
+  as: "h1" | "h2" | "h3" | "h4";
+}
+
+const Heading = styled.h1<HeadingProps>`
   //插值函数，即用模板字符串包裹的函数表达式
   ${(props) =>
     props.as === "h1" &&
@@ -52,5 +57,9 @@ const Heading = styled.h1`
       text-align: center;
     `}
 `;
+
+Heading.defaultProps = {
+  as: "h1",
+};
 
 export default Heading;

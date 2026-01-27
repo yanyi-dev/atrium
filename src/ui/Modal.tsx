@@ -1,4 +1,13 @@
-import { cloneElement, createContext, useContext, useState } from "react";
+import {
+  cloneElement,
+  createContext,
+  useContext,
+  useState,
+  ReactElement,
+  ReactNode,
+  Dispatch,
+  SetStateAction,
+} from "react";
 import { createPortal } from "react-dom";
 import { HiXMark } from "react-icons/hi2";
 import styled from "styled-components";
@@ -53,12 +62,31 @@ const Button = styled.button`
   }
 `;
 
+interface ModalContextProps {
+  openName: string;
+  close: () => void;
+  open: Dispatch<SetStateAction<string>>;
+}
+
+interface ModalProps {
+  children: ReactNode;
+}
+
 //复合组件第一步，创建上下文api
-const ModalContext = createContext();
+const ModalContext = createContext<ModalContextProps | undefined>(undefined);
+
+function useModalContext() {
+  const context = useContext(ModalContext);
+
+  if (context === undefined)
+    throw new Error("useModalContext must be used within a Modal");
+
+  return context;
+}
 
 //第二步，创建父组件，并提供上下文
 //子组件以children的形式接收上下文
-function Modal({ children }) {
+function Modal({ children }: ModalProps) {
   //通过对模糊窗口设置名字实现特定窗口打开
   const [openName, setOpenName] = useState("");
 
@@ -72,20 +100,30 @@ function Modal({ children }) {
   );
 }
 
+interface OpenProps {
+  opens: string;
+  children: ReactElement;
+}
+
 //第三步，创建子组件
-function Open({ children, opens: opensWindowName }) {
-  const { open } = useContext(ModalContext);
+function Open({ children, opens: opensWindowName }: OpenProps) {
+  const { open } = useModalContext();
 
   //cloneElement中的props，在原组件中有就覆盖，没有就加上
   return cloneElement(children, { onClick: () => open(opensWindowName) });
 }
 
-function Window({ children, name }) {
-  const { openName, close } = useContext(ModalContext);
+interface WindowProps {
+  name: string;
+  children: ReactElement;
+}
 
-  const ref = useOutsideClick(close, true);
+function Window({ children, name }: WindowProps) {
+  const { openName, close } = useModalContext();
 
-  if (name !== openName) return;
+  const ref = useOutsideClick<HTMLDivElement>(close, true);
+
+  if (name !== openName) return null;
 
   //jsx的Dom位置变，组件树中位置不变
   //为了重复使用，防止在其他地方被父组件的溢出设置为隐藏
@@ -99,7 +137,7 @@ function Window({ children, name }) {
         <div>{cloneElement(children, { onCloseModal: close })}</div>
       </StyledModal>
     </Overlay>,
-    document.body
+    document.body,
   );
 }
 

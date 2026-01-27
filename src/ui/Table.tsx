@@ -1,5 +1,4 @@
-import { da } from "date-fns/locale";
-import { createContext, useContext } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import styled from "styled-components";
 
 const StyledTable = styled.div`
@@ -11,7 +10,11 @@ const StyledTable = styled.div`
   overflow: hidden;
 `;
 
-const CommonRow = styled.div`
+interface CommonRowProps {
+  $columns: string;
+}
+
+const CommonRow = styled.div<CommonRowProps>`
   display: grid;
   grid-template-columns: ${(props) => props.$columns};
   column-gap: 2.4rem;
@@ -61,9 +64,27 @@ const Empty = styled.p`
   margin: 2.4rem;
 `;
 
-const TableContext = createContext();
+interface TableProps {
+  columns: string;
+  children: ReactNode;
+}
 
-function Table({ columns, children }) {
+interface TableContextProps {
+  columns: string;
+}
+
+const TableContext = createContext<TableContextProps | undefined>(undefined);
+
+function useTableContext() {
+  const context = useContext(TableContext);
+
+  if (context === undefined)
+    throw new Error("TableContext was used outside of TableContextProvider");
+
+  return context;
+}
+
+function Table({ columns, children }: TableProps) {
   return (
     <TableContext.Provider value={{ columns }}>
       <StyledTable role="table">{children}</StyledTable>
@@ -71,8 +92,12 @@ function Table({ columns, children }) {
   );
 }
 
-function Header({ children }) {
-  const { columns } = useContext(TableContext);
+interface HeaderProps {
+  children: ReactNode;
+}
+
+function Header({ children }: HeaderProps) {
+  const { columns } = useTableContext();
 
   return (
     <StyledHeader role="row" $columns={columns} as="header">
@@ -80,8 +105,13 @@ function Header({ children }) {
     </StyledHeader>
   );
 }
-function Row({ children }) {
-  const { columns } = useContext(TableContext);
+
+interface RowProps {
+  children: ReactNode;
+}
+
+function Row({ children }: RowProps) {
+  const { columns } = useTableContext();
 
   return (
     <StyledRow role="row" $columns={columns}>
@@ -90,7 +120,12 @@ function Row({ children }) {
   );
 }
 
-function Body({ data, render }) {
+interface BodyProps<T> {
+  data: T[];
+  render: (item: T) => ReactNode;
+}
+
+function Body<T>({ data, render }: BodyProps<T>) {
   if (!data.length) return <Empty>No data to show at the moment</Empty>;
 
   return <StyledBody>{data.map(render)}</StyledBody>;

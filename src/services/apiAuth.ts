@@ -1,4 +1,5 @@
 import supabase, { supabaseUrl } from "./supabase";
+import { User, Session, WeakPassword } from "@supabase/supabase-js";
 
 interface SignUpParams {
   fullName: string;
@@ -17,7 +18,14 @@ interface UpdateCurrentUserParams {
   avatar?: File;
 }
 
-export async function signup({ fullName, email, password }: SignUpParams) {
+export async function signup({
+  fullName,
+  email,
+  password,
+}: SignUpParams): Promise<{
+  user: User | null;
+  session: Session | null;
+}> {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -34,7 +42,11 @@ export async function signup({ fullName, email, password }: SignUpParams) {
   return data;
 }
 
-export async function login({ email, password }: LoginParams) {
+export async function login({ email, password }: LoginParams): Promise<{
+  user: User;
+  session: Session;
+  weakPassword?: WeakPassword;
+}> {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -47,7 +59,7 @@ export async function login({ email, password }: LoginParams) {
 
 //如果本地有登陆记录，则直接查询登陆令牌是否过期
 //没有就快速登陆
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | null> {
   const { data: session } = await supabase.auth.getSession();
   //如果本地没登陆过，直接再去login页面登陆一次
   if (!session.session) return null;
@@ -59,7 +71,7 @@ export async function getCurrentUser() {
   return data?.user;
 }
 
-export async function logout() {
+export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut();
   if (error) throw new Error(error.message);
 }
@@ -68,7 +80,9 @@ export async function updateCurrentUser({
   password,
   fullName,
   avatar,
-}: UpdateCurrentUserParams) {
+}: UpdateCurrentUserParams): Promise<{
+  user: User;
+}> {
   // 密码和用户名分开更新
   let updateData;
   if (password) updateData = { password };
