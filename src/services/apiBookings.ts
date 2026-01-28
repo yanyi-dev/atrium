@@ -1,44 +1,21 @@
 import { PAGE_SIZE } from "../utils/constants";
 import { getToday } from "../utils/helpers";
 import supabase from "./supabase";
-import { Booking, UpdateBooking, Cabin, Guest } from "../types";
+import {
+  Booking,
+  UpdateBooking,
+  BookingWithSelection,
+  StaysTodayActivity,
+  BookingsAfterDate,
+  StaysAfterDate,
+  BookingDetail,
+} from "../types";
 
 interface GetBookingsParams {
-  filter: { field: string; value: string; method?: string };
+  filter: { field: string; value: string; method?: string } | null;
   sortBy: { field: string; direction: string };
   page: number;
 }
-
-type BookingWithSelection = Pick<
-  Booking,
-  | "id"
-  | "created_at"
-  | "startDate"
-  | "endDate"
-  | "numNights"
-  | "numGuests"
-  | "status"
-  | "totalPrice"
-> & {
-  cabins: Pick<Cabin, "name"> | null; // 关联查询可能会返回 null
-  guests: Pick<Guest, "fullName" | "email"> | null;
-};
-
-type BookingDetail = Booking & {
-  cabins: Cabin | null;
-  guests: Guest | null;
-};
-
-type BookingsAfterDate = Pick<
-  Booking,
-  "created_at" | "totalPrice" | "extrasPrice"
->;
-
-type StaysAfterDate = Booking & { guests: Pick<Guest, "fullName"> | null };
-
-type StaysTodayActivity = Booking & {
-  guests: Pick<Guest, "fullName" | "nationality" | "countryFlag"> | null;
-};
 
 export async function getBookings({
   filter,

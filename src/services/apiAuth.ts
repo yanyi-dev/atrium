@@ -1,21 +1,10 @@
 import supabase, { supabaseUrl } from "./supabase";
 import { User, Session, WeakPassword } from "@supabase/supabase-js";
-
-interface SignUpParams {
-  fullName: string;
-  email: string;
-  password: string;
-}
+import { SignUpParams, UpdateCurrentUserParams } from "../types";
 
 interface LoginParams {
   email: string;
   password: string;
-}
-
-interface UpdateCurrentUserParams {
-  password?: string;
-  fullName?: string;
-  avatar?: File;
 }
 
 export async function signup({

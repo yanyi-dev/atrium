@@ -1,7 +1,5 @@
 import supabase, { supabaseUrl } from "./supabase";
-import { Cabin, NewCabin } from "../types";
-
-type CreateCabin = Omit<NewCabin, "image"> & { image: string | File };
+import { Cabin, CreateCabin } from "../types";
 
 export async function getCabins(): Promise<Cabin[]> {
   const { data: cabins, error } = await supabase.from("cabins").select("*");

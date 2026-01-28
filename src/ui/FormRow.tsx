@@ -39,14 +39,16 @@ const Error = styled.span`
 
 interface FormRowProps {
   label?: string;
-  children: ReactElement<{ id?: string }>;
+  children: ReactElement<{ id?: string }> | ReactElement<{ id?: string }>[];
   error?: string;
 }
 
 function FormRow({ label, children, error }: FormRowProps) {
+  const childId = !Array.isArray(children) ? children?.props?.id : undefined;
+
   return (
     <StyledFormRow>
-      {label && <Label htmlFor={children?.props.id}>{label}</Label>}
+      {label && <Label htmlFor={childId}>{label}</Label>}
       {children}
 
       {error && <Error>{error}</Error>}
