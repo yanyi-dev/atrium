@@ -1,12 +1,10 @@
-# yyyyds-wild-oasis
+# Atrium (雅庭旅宿后台)
 
 ## 简介
 
-这是我的初始 yyyyds-wild-oasis 项目，用于 React 的学习与实践。
+雅庭旅宿 - 现代化民宿后台管理系统
 
 ## 技术栈
-
-该项目基于 Jonas Schmedtmann 的课程，使用了以下核心技术栈：
 
 - **前端框架**: React (Vite)
 - **状态管理与数据获取**: React Query (TanStack Query)
