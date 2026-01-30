@@ -24,6 +24,13 @@ const StyledSalesChart = styled(DashboardBox)`
   }
 `;
 
+const NoData = styled.p`
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-top: 0.8rem;
+`;
+
 const startLight = {
   totalSales: { stroke: "#4f46e5", fill: "#c7d2fe" },
   extrasSales: { stroke: "#16a34a", fill: "#dcfce7" },
@@ -38,63 +45,43 @@ const startDark = {
   background: "#18212f",
 };
 
+/**
+ 可以先用一个 Map（哈希表） 对 bookings 进行一次性遍历，将日期作为 Key，金额作为 Value 存起来。这样在生成 allDates 时，只需要O(1)的时间去查找，总复杂度降为 O(N)
+ 也就是说，我采用了 ‘空间换时间’ 的策略进行了重构。我先利用 Map 对象 对订单进行了一次性线性遍历（O(N)），以日期字符串为 Key 进行预聚合并建立索引。O(天数+订单数)
+ */
+
 function prepareData(bookings: BookingsAfterDate[], numDays: number) {
   const allDates = eachDayOfInterval({
     start: subDays(new Date(), numDays - 1),
     end: new Date(),
   });
-  /*
-  const data = allDates.map((date) => {
-    return {
-      label: format(date, "MMM dd"),
-      totalSales: bookings
-        .filter((booking) => isSameDay(date, new Date(booking.created_at)))
-        .reduce((acc, cur) => acc + cur.totalPrice, 0),
-      extrasSales: bookings
-        .filter((booking) => isSameDay(date, new Date(booking.created_at)))
-        .reduce((acc, cur) => acc + cur.extrasPrice, 0),
-    };
-  });
-*/
 
-  /**
- 优化方案：可以先用一个 Map（哈希表） 对 bookings 进行一次性遍历，将日期作为 Key，金额作为 Value 存起来。这样在生成 allDates 时，只需要 $O(1)$ 的时间去查找，总复杂度降为 $O(N)
- 也就是说我采用了 ‘空间换时间’ 的策略进行了重构。我先利用 Map 对象 对订单进行了一次性线性遍历（$O(N)$），以日期字符串为 Key 进行预聚合并建立索引。
- */
-
-  // 1. 初始化一个 Map 对象。Map 在频繁增删查改时性能优于普通对象 {}。
+  //初始化一个 Map 对象。Map 在频繁增删查改时性能优于普通对象 {}。
   const bookingsMap = new Map<
     string,
     { totalSales: number; extrasSales: number }
   >();
 
-  // 遍历后端返回的原始订单数组（假设有 N 条订单）。
   bookings.forEach((booking) => {
-    // 将 ISO 字符串格式的创建时间转为 Date 对象，再统一格式化为 "2025-12-23" 这种纯日期字符串。
-    // 关键：必须去掉时分秒，否则同一天的订单会因为秒数不同而无法聚合。
+    //去掉时分秒，否则同一天的订单会因为秒数不同而无法聚合。
     const dateKey = format(new Date(booking.created_at), "yyyy-MM-dd");
 
-    // 尝试从 Map 中读取该日期已有的统计结果。
-    // 如果这是该日期处理的第一笔订单，则初始化一个零值对象作为回退。
     const currentData = bookingsMap.get(dateKey) || {
       totalSales: 0,
       extrasSales: 0,
     };
 
-    // 更新 Map：保留原有的 Key，但将当前订单的金额累加进对应的分类中。
     bookingsMap.set(dateKey, {
       totalSales: currentData.totalSales + (booking.totalPrice ?? 0),
       extrasSales: currentData.extrasSales + (booking.extrasPrice ?? 0),
     });
   });
 
-  // 遍历我们预先生成的连续日期数组 allDates（假设有 D 天）。
   const data = allDates.map((date) => {
     // 为当前循环的这一天生成同样的 Key（如 "2025-12-23"）。
     const dateKey = format(date, "yyyy-MM-dd");
 
-    // 核心优化：直接去 Map 里拿数据。这在算法上是 O(1) 的复杂度。
-    // 不需要再用 .filter() 去遍历整个 bookings 数组了。
+    // 核心优化，直接去 Map 里拿数据。这在算法上是 O(1) 的复杂度。
     const dayData = bookingsMap.get(dateKey);
 
     // 返回 Recharts 组件渲染每一柱/点所需的标准对象。
@@ -117,12 +104,22 @@ interface SalesChartProps {
   numDays: number;
 }
 
+//展现过去一段时间内的每日总消费和额外消费趋势图
 function SalesChart({ bookings, numDays }: SalesChartProps) {
   const { isDarkMode } = useDarkMode();
 
   const { data, allDates } = prepareData(bookings, numDays);
 
   const colors = isDarkMode ? startDark : startLight;
+
+  if (!bookings.length) {
+    return (
+      <StyledSalesChart>
+        <Heading as="h2">Sales Chart</Heading>
+        <NoData>No sales data for this period...</NoData>
+      </StyledSalesChart>
+    );
+  }
 
   return (
     <StyledSalesChart>

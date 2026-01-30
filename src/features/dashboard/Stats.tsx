@@ -11,6 +11,7 @@ interface StatsProps {
   cabinCount: number;
 }
 
+//展现总订单数、总销售额、入住数、入住率
 function Stats({ bookings, confirmedStays, numDays, cabinCount }: StatsProps) {
   const numBookings = bookings.length;
 

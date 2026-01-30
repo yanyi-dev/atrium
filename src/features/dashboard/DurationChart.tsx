@@ -29,6 +29,14 @@ const ChartBox = styled.div`
   }
 `;
 
+const NoData = styled.p`
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-top: 0.8rem;
+  padding-top: 1.1rem;
+`;
+
 const startDataLight = [
   {
     duration: "1 night",
@@ -115,39 +123,78 @@ const startDataDark = [
   },
 ];
 
+const DarkColor = {
+  text: "#e5e7eb",
+  background: "#18212f",
+};
+
+const LightColor = {
+  text: "#374151",
+  background: "#fff",
+};
+
 type startDataType = {
   duration: string;
   value: number;
   color: string;
 }[];
 
-//这个也可以重构，到时候自己复盘的时候在想想办法
+/**
+ * 根据入住天数返回对应的时长分类
+ * 集中管理分类逻辑，便于维护和扩展
+ */
+// 声明式配置，更易维护
+const DURATION_RANGES = [
+  { min: 1, max: 1, label: "1 night" },
+  { min: 2, max: 2, label: "2 nights" },
+  { min: 3, max: 3, label: "3 nights" },
+  { min: 4, max: 5, label: "4-5 nights" },
+  { min: 6, max: 7, label: "6-7 nights" },
+  { min: 8, max: 14, label: "8-14 nights" },
+  { min: 15, max: 21, label: "15-21 nights" },
+  { min: 22, max: Infinity, label: "21+ nights" },
+];
+
+function getDurationCategory(numNights: number): string | null {
+  const range = DURATION_RANGES.find(
+    (r) => numNights >= r.min && numNights <= r.max,
+  );
+  return range?.label ?? null;
+}
+
+/**
+ * 优化思路：使用 Map 进行一次性计数
+ *
+ * 原方案：
+ * - incArrayValue 每次调用都创建新数组，遍历 8 个元素
+ * - reduce 中调用 N 次，总复杂度 O(N × 8)
+ *
+ * 优化后：
+ * - 第一步：遍历 stays，用 Map 计数 O(N)
+ * - 第二步：遍历 startData，合并计数 O(8)
+ * - 总复杂度：O(N + 8) ≈ O(N)
+ */
 function prepareData(startData: startDataType, stays: StaysAfterDate[]) {
-  // A bit ugly code, but sometimes this is what it takes when working with real data 😅
+  //使用 Map 进行计数，Key 为 duration 字符串
+  const countMap = new Map<string, number>();
 
-  //负责计数的函数
-  function incArrayValue(arr: startDataType, field: string) {
-    return arr.map((obj) =>
-      obj.duration === field ? { ...obj, value: obj.value + 1 } : obj,
-    );
-  }
+  stays.forEach((stay) => {
+    const numNights = stay.numNights ?? 0;
+    const category = getDurationCategory(numNights);
 
-  //stays就是confirmedStays，已经确认的订单
-  //arr就是外面的startDataDark或startDataLight，相当于累加计数器
-  const data = stays
-    .reduce((arr, cur) => {
-      const num = cur.numNights ?? 0;
-      if (num === 1) return incArrayValue(arr, "1 night");
-      if (num === 2) return incArrayValue(arr, "2 nights");
-      if (num === 3) return incArrayValue(arr, "3 nights");
-      if ([4, 5].includes(num)) return incArrayValue(arr, "4-5 nights");
-      if ([6, 7].includes(num)) return incArrayValue(arr, "6-7 nights");
-      if (num >= 8 && num <= 14) return incArrayValue(arr, "8-14 nights");
-      if (num >= 15 && num <= 21) return incArrayValue(arr, "15-21 nights");
-      if (num >= 21) return incArrayValue(arr, "21+ nights");
-      return arr;
-    }, startData)
-    .filter((obj) => obj.value > 0);
+    if (category) {
+      // Map.get 返回 undefined 时用 0，然后 +1
+      countMap.set(category, (countMap.get(category) ?? 0) + 1);
+    }
+  });
+
+  //将 Map 计数合并到 startData，并过滤掉 value=0 的项
+  const data = startData
+    .map((item) => ({
+      ...item,
+      value: countMap.get(item.duration) ?? 0,
+    }))
+    .filter((item) => item.value > 0);
 
   return data;
 }
@@ -158,17 +205,19 @@ interface DurationChartProps {
 
 function DurationChart({ confirmedStays }: DurationChartProps) {
   const { isDarkMode } = useDarkMode();
+
+  if (!confirmedStays.length) {
+    return (
+      <ChartBox>
+        <Heading as="h2">Stay duration summary</Heading>
+        <NoData>No stay duration data for this period...</NoData>
+      </ChartBox>
+    );
+  }
+
   const startData = isDarkMode ? startDataDark : startDataLight;
   const data = prepareData(startData, confirmedStays);
-  const colors = isDarkMode
-    ? {
-        text: "#e5e7eb",
-        background: "#18212f",
-      }
-    : {
-        text: "#374151",
-        background: "#fff",
-      };
+  const colors = isDarkMode ? DarkColor : LightColor;
 
   return (
     <ChartBox>
