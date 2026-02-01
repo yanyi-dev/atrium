@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useUser } from "./useUser";
+import Modal from "../../ui/Modal";
 
 const StyledUserAvatar = styled.div`
   display: flex;
@@ -18,6 +19,13 @@ const Avatar = styled.img`
   object-position: center;
   border-radius: 50%;
   outline: 2px solid var(--color-grey-100);
+  transition: all 0.2s;
+
+  &:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    cursor: pointer;
+  }
 `;
 
 function UserAvatar() {
@@ -26,10 +34,20 @@ function UserAvatar() {
 
   return (
     <StyledUserAvatar>
-      <Avatar
-        src={avatar || "default-user.jpg"}
-        alt={`Avatar of ${fullName}`}
-      ></Avatar>
+      <Modal>
+        <Modal.Open opens="Avatar">
+          <Avatar
+            src={avatar || "default-user.jpg"}
+            alt={`Avatar of ${fullName}`}
+          ></Avatar>
+        </Modal.Open>
+        <Modal.Window name="Avatar">
+          <img
+            src={avatar ?? undefined}
+            style={{ width: "100%", objectFit: "contain" }}
+          />
+        </Modal.Window>
+      </Modal>
       <span>{fullName}</span>
     </StyledUserAvatar>
   );

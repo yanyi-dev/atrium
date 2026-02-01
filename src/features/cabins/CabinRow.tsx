@@ -19,6 +19,13 @@ const Img = styled.img`
   object-fit: cover;
   object-position: center;
   transform: scale(1.5) translateX(-7px);
+  transition: all 0.2s;
+
+  &:hover {
+    transform: scale(1.6);
+    z-index: 10;
+    cursor: pointer;
+  }
 `;
 
 const Cabin = styled.div`
@@ -70,7 +77,17 @@ function CabinRow({ cabin }: CabinRowProps) {
 
   return (
     <Table.Row>
-      <Img src={image ?? undefined} loading="lazy" />
+      <Modal>
+        <Modal.Open opens="cabin-image">
+          <Img src={image ?? undefined} loading="lazy" />
+        </Modal.Open>
+        <Modal.Window name="cabin-image">
+          <img
+            src={image ?? undefined}
+            style={{ width: "100%", objectFit: "contain" }}
+          />
+        </Modal.Window>
+      </Modal>
       <Cabin>{name}</Cabin>
       <div>Fits up to {maxCapacity} guests</div>
       <Price>{formatCurrency(regularPrice)}</Price>
