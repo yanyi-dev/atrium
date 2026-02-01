@@ -11,6 +11,7 @@ import { Cabin, CreateFormData } from "../../types";
 
 import { useCreateCabin } from "./useCreateCabin";
 import { useEditCabin } from "./useEditCabin";
+import { compressImage } from "../../utils/compressImage";
 
 interface CreateCabinFormProps {
   cabinToEdit?: Partial<Cabin>;
@@ -47,14 +48,29 @@ function CreateCabinForm({
 
   const isWorking = isCreating || isEditing;
 
-  function onSubmit(data: CreateFormData) {
+  async function onSubmit(data: CreateFormData) {
     //data.image是一个类数组对象，即FileList对象
     // mutate({ ...data, image: data.image[0] });
 
     const image = typeof data.image === "string" ? data.image : data.image[0];
+
+    let uploadImage = image;
+
+    if (typeof image !== "string") {
+      try {
+        const compressedFile = await compressImage(image, 1200);
+        uploadImage = compressedFile;
+      } catch (err) {
+        console.error(
+          "Image compression failed, falling back to original image",
+          err,
+        );
+      }
+    }
+
     if (isEditSession)
       editCabin(
-        { newCabinData: { ...data, image }, id: editId! },
+        { newCabinData: { ...data, image: uploadImage }, id: editId! },
         {
           onSuccess: () => {
             reset();
@@ -67,7 +83,7 @@ function CreateCabinForm({
       );
     else
       createCabin(
-        { ...data, image: image },
+        { ...data, image: uploadImage },
         {
           onSuccess: () => {
             reset();

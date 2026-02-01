@@ -8,6 +8,7 @@ import Input from "../../ui/Input";
 
 import { useUser } from "./useUser";
 import { useUpdateUser } from "./useUpdateUser";
+import { compressImage } from "../../utils/compressImage";
 
 function UpdateUserDataForm() {
   // We don't need the loading state, and can immediately use the user data, because we know that it has already been loaded at this point
@@ -22,16 +23,32 @@ function UpdateUserDataForm() {
   const [fullName, setFullName] = useState(currentFullName);
   const [avatar, setAvatar] = useState<File | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formElement = e.currentTarget;
 
     if (!fullName) return;
+
+    let uploadAvatar = avatar;
+
+    if (avatar) {
+      try {
+        const compressedFile = await compressImage(avatar);
+        uploadAvatar = compressedFile;
+      } catch (err) {
+        console.error(
+          "Image compression failed, falling back to original image",
+          err,
+        );
+      }
+    }
+
     return updateUser(
-      { fullName, avatar },
+      { fullName, avatar: uploadAvatar },
       {
         onSuccess: () => {
           setAvatar(null);
-          e.currentTarget.reset();
+          formElement.reset();
         },
       },
     );
