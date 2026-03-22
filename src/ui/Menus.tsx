@@ -1,6 +1,8 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useMemo,
   useState,
   ReactNode,
   MouseEvent,
@@ -83,22 +85,44 @@ const StyledButton = styled.button`
   }
 `;
 
-interface MenusContextProps {
+// --- 拆分为两个 Context ---
+
+// StateContext：携带会变化的状态，Toggle 和 List 订阅
+interface MenusStateContextProps {
   openId: string;
-  open: Dispatch<SetStateAction<string>>;
-  close: () => void;
   position: Point | null;
-  setPosition: Dispatch<SetStateAction<Point | null>>;
 }
 
-const MenusContext = createContext<MenusContextProps | undefined>(undefined);
+// DispatchContext：只携带操作函数，引用永远稳定，Button 订阅
+interface MenusDispatchContextProps {
+  open: Dispatch<SetStateAction<string>>;
+  close: () => void;
+  setPosition: Dispatch<SetStateAction<Point | null>>;
+  toggle: (id: string) => void;
+}
 
-function useMenusContext() {
-  const context = useContext(MenusContext);
+const MenusStateContext = createContext<MenusStateContextProps | undefined>(
+  undefined,
+);
+const MenusDispatchContext = createContext<
+  MenusDispatchContextProps | undefined
+>(undefined);
 
+function useMenusStateContext() {
+  const context = useContext(MenusStateContext);
   if (!context)
-    throw new Error("useMenus must be used within a Menus provider");
+    throw new Error(
+      "useMenusStateContext must be used within a Menus provider",
+    );
+  return context;
+}
 
+function useMenusDispatchContext() {
+  const context = useContext(MenusDispatchContext);
+  if (!context)
+    throw new Error(
+      "useMenusDispatchContext must be used within a Menus provider",
+    );
   return context;
 }
 
@@ -110,15 +134,24 @@ function Menus({ children }: Menus) {
   const [openId, setOpenId] = useState("");
   const [position, setPosition] = useState<Point | null>(null);
 
-  const close = () => setOpenId("");
+  const toggle = useCallback((id: string) => {
+    //当前没有打开菜单按钮，或打开的菜单按钮不是当前菜单按钮
+    setOpenId((curId) => (curId === "" || curId !== id ? id : ""));
+  }, []);
+  const close = useCallback(() => setOpenId(""), []);
   const open = setOpenId;
 
+  const dispatchValue = useMemo(
+    () => ({ open, close, setPosition, toggle }),
+    [open, close, toggle],
+  );
+
   return (
-    <MenusContext.Provider
-      value={{ openId, open, close, position, setPosition }}
-    >
-      {children}
-    </MenusContext.Provider>
+    <MenusDispatchContext.Provider value={dispatchValue}>
+      <MenusStateContext.Provider value={{ openId, position }}>
+        {children}
+      </MenusStateContext.Provider>
+    </MenusDispatchContext.Provider>
   );
 }
 
@@ -126,14 +159,14 @@ interface ToggleProps {
   id: string;
 }
 
+// Toggle 订阅 StateContext（需要 openId 判断开关逻辑）+ DispatchContext（执行操作）
 function Toggle({ id }: ToggleProps) {
-  const { openId, open, close, setPosition } = useMenusContext();
+  const { setPosition, toggle } = useMenusDispatchContext();
 
+  // e.stopPropagation()
+  // 配合下面List中的事件冒泡阶段的useOutsideClick保证菜单按钮的正常开关
+  // 方法二见useOutsideClick内部实现
   function handleToggle(e: MouseEvent) {
-    // e.stopPropagation()
-    //配合下面List中的事件冒泡阶段的useOutsideClick保证菜单按钮的正常开关
-    //方法二见useOutsideClick内部实现
-
     const rect = (e.target as HTMLElement)
       .closest("button")!
       .getBoundingClientRect();
@@ -141,10 +174,7 @@ function Toggle({ id }: ToggleProps) {
       x: window.innerWidth - rect.width - rect.x,
       y: rect.y + rect.height + 8,
     });
-    //当前没有打开菜单按钮，或打开的菜单按钮不是当前菜单按钮
-    // openId === "" || openId !== id ? open(id) : close();
-    if (openId === "" || openId !== id) open(id);
-    else close();
+    toggle(id);
   }
 
   return (
@@ -160,14 +190,22 @@ interface ListProps {
 }
 
 function List({ id, children }: ListProps) {
-  const { openId, position, close } = useMenusContext();
-
-  //在当前窗口打开的情况下滚动，才关闭
-  useOutsideScroll(close, openId === id);
-  const ref = useOutsideClick<HTMLUListElement>(close);
-  // const ref = useOutsideClick(close,false);
-
+  const { openId, position } = useMenusStateContext();
   if (openId !== id || !position) return null;
+  return <ListWindow position={position}>{children}</ListWindow>;
+}
+
+interface ListWindowProps {
+  position: Point;
+  children: ReactNode;
+}
+
+function ListWindow({ position, children }: ListWindowProps) {
+  const { close } = useMenusDispatchContext();
+
+  useOutsideScroll(close, true);
+
+  const ref = useOutsideClick<HTMLUListElement>(close);
 
   return createPortal(
     <StyledList $position={position} ref={ref}>
@@ -183,8 +221,10 @@ interface ButtonProps {
   onClick?: () => void;
 }
 
+// Button 只订阅 DispatchContext：openId/position 变化不会触发它重渲染
 function Button({ children, icon, onClick }: ButtonProps) {
-  const { close } = useMenusContext();
+  const { close } = useMenusDispatchContext();
+
   function handleClick() {
     onClick?.();
     close();

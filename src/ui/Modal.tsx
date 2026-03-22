@@ -1,7 +1,9 @@
 import {
   cloneElement,
   createContext,
+  useCallback,
   useContext,
+  useMemo,
   useState,
   ReactElement,
   ReactNode,
@@ -55,48 +57,64 @@ const Button = styled.button`
   & svg {
     width: 2.4rem;
     height: 2.4rem;
-    /* Sometimes we need both */
-    /* fill: var(--color-grey-500);
-    stroke: var(--color-grey-500); */
     color: var(--color-grey-500);
   }
 `;
 
-interface ModalContextProps {
+// StateContext：只携带 openName，供 Window 订阅
+interface ModalStateContextProps {
   openName: string;
-  close: () => void;
+}
+
+// DispatchContext：只携带操作函数，引用永远稳定，供 Open 订阅
+interface ModalDispatchContextProps {
   open: Dispatch<SetStateAction<string>>;
+  close: () => void;
 }
 
 interface ModalProps {
   children: ReactNode;
 }
 
-//复合组件第一步，创建上下文api
-const ModalContext = createContext<ModalContextProps | undefined>(undefined);
+const ModalStateContext = createContext<ModalStateContextProps | undefined>(
+  undefined,
+);
+const ModalDispatchContext = createContext<
+  ModalDispatchContextProps | undefined
+>(undefined);
 
-function useModalContext() {
-  const context = useContext(ModalContext);
-
+function useModalStateContext() {
+  const context = useContext(ModalStateContext);
   if (context === undefined)
-    throw new Error("useModalContext must be used within a Modal");
-
+    throw new Error("useModalStateContext must be used within a Modal");
   return context;
 }
 
-//第二步，创建父组件，并提供上下文
-//子组件以children的形式接收上下文
+function useModalDispatchContext() {
+  const context = useContext(ModalDispatchContext);
+  if (context === undefined)
+    throw new Error("useModalDispatchContext must be used within a Modal");
+  return context;
+}
+
+// 父组件：提供两层 Provider
 function Modal({ children }: ModalProps) {
-  //通过对模糊窗口设置名字实现特定窗口打开
   const [openName, setOpenName] = useState("");
 
-  const close = () => setOpenName("");
+  // useCallback 稳定化 close 的引用，保证 DispatchContext 的 value 对象不变
+  const close = useCallback(() => setOpenName(""), []);
   const open = setOpenName;
 
+  // useMemo 确保 DispatchContext value 对象引用保持稳定
+  // 只要 close 和 open 不变，这个对象就不会触发订阅者重渲染
+  const dispatchValue = useMemo(() => ({ open, close }), [open, close]);
+
   return (
-    <ModalContext.Provider value={{ openName, close, open }}>
-      {children}
-    </ModalContext.Provider>
+    <ModalDispatchContext.Provider value={dispatchValue}>
+      <ModalStateContext.Provider value={{ openName }}>
+        {children}
+      </ModalStateContext.Provider>
+    </ModalDispatchContext.Provider>
   );
 }
 
@@ -105,11 +123,10 @@ interface OpenProps {
   children: ReactElement;
 }
 
-//第三步，创建子组件
+// Open 只订阅 DispatchContext：openName 变化不会触发它重渲染
 function Open({ children, opens: opensWindowName }: OpenProps) {
-  const { open } = useModalContext();
+  const { open } = useModalDispatchContext();
 
-  //cloneElement中的props，在原组件中有就覆盖，没有就加上
   return cloneElement(children, { onClick: () => open(opensWindowName) });
 }
 
@@ -118,15 +135,24 @@ interface WindowProps {
   children: ReactElement;
 }
 
+// Window 订阅 StateContext 判断是否显示，订阅 DispatchContext 获取 close
 function Window({ children, name }: WindowProps) {
-  const { openName, close } = useModalContext();
-
-  const ref = useOutsideClick<HTMLDivElement>(close, true);
+  const { openName } = useModalStateContext();
 
   if (name !== openName) return null;
 
-  //jsx的Dom位置变，组件树中位置不变
-  //为了重复使用，防止在其他地方被父组件的溢出设置为隐藏
+  return <WindowT>{children}</WindowT>;
+}
+
+interface WindowTProps {
+  children: ReactElement;
+}
+
+function WindowT({ children }: WindowTProps) {
+  const { close } = useModalDispatchContext();
+
+  const ref = useOutsideClick<HTMLDivElement>(close, true);
+
   return createPortal(
     <Overlay>
       <StyledModal ref={ref}>
@@ -141,7 +167,6 @@ function Window({ children, name }: WindowProps) {
   );
 }
 
-//第四步，将父子组件绑定
 Modal.Open = Open;
 Modal.Window = Window;
 

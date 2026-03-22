@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useMemo } from "react";
 import styled from "styled-components";
 
 const StyledTable = styled.div`
@@ -85,8 +85,9 @@ function useTableContext() {
 }
 
 function Table({ columns, children }: TableProps) {
+  const value = useMemo(() => ({ columns }), [columns]);
   return (
-    <TableContext.Provider value={{ columns }}>
+    <TableContext.Provider value={value}>
       <StyledTable role="table">{children}</StyledTable>
     </TableContext.Provider>
   );
